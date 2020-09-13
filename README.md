@@ -3,7 +3,7 @@
 shruthiDrums is a Shruthi-1 Firmware, that bases on the Anushri drum synthesizer/sequencer.
 
 ## Download
- * https://github.com/eh2k/shruthiDRUMS/raw/master/build/shruthi_drums/shruthi_drums.syx
+ * build/firmware/firmware.syx
 
 ## HowTo jam:
 
