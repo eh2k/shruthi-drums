@@ -1,0 +1,6 @@
+[submodule "tools"]
+	path = tools
+	url = https://github.com/pichenettes/avril-firmware_tools.git
+[submodule "avrlib"]
+	path = avrlib
+	url = https://github.com/pichenettes/avril.git
