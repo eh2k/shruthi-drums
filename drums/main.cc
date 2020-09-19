@@ -240,7 +240,7 @@ inline void TickInternalClock()
         if (cycle == 0)
             MidiDispatcher::Clock(true);
 
-        if (++cycle >= 32)
+        if (++cycle >= (32 + enc_inc))
             cycle = 0;
     }
     else
@@ -439,6 +439,7 @@ int main(void)
     int8_t last_page = -1;
     int8_t last_step = -1;
     char last_char = 0;
+    uint8_t last_input = 0;
 
     //AA__BB__CC__DD__
     //  2   6   A   E
@@ -484,29 +485,30 @@ int main(void)
 
                 if (page == 1)
                 {
-                    sprintf(&linebuffer[00], "DB  SD  HH  RND ");
+                    sprintf(&linebuffer[00], "BaseDrum        ");
                     sprintf(&linebuffer[16], "                ");
                 }
                 else if (page == 2)
                 {
-                    sprintf(&linebuffer[00], "X   Y   LEN RND ");
+                    sprintf(&linebuffer[00], "SnareDrum        ");
                     sprintf(&linebuffer[16], "                ");
                 }
                 else if (page == 3)
                 {
-                    sprintf(&linebuffer[00], "BaseDrum        ");
+                    sprintf(&linebuffer[00], "HiHat          ");
                     sprintf(&linebuffer[16], "                ");
                 }
                 else if (page == 4)
                 {
-                    sprintf(&linebuffer[00], "SnareDrum        ");
+                    sprintf(&linebuffer[00], "DB  SD  HH  RND ");
                     sprintf(&linebuffer[16], "                ");
                 }
                 else if (page == 5)
                 {
-                    sprintf(&linebuffer[00], "HiHat          ");
+                    sprintf(&linebuffer[00], "X   Y   LEN RND ");
                     sprintf(&linebuffer[16], "                ");
                 }
+                
                 else if (page == 6)
                 {
                     sprintf(&linebuffer[00], "FILTER          ");
@@ -537,7 +539,6 @@ int main(void)
             ticks = n + 1;
         }
 
-        static uint8_t last_input = 0;
         uint8_t input = ~switches.Read();
 
         if ((input & (32 | 16 | 8 | 4))) //Button Pressed
@@ -568,10 +569,9 @@ int main(void)
         if (input & 32)
             page = 1;
 
-        last_input = input;
         status_leds.Write(1 << (page - 1));
 
-        if (page == 1)
+        if (page == 4)
         {
             if (poti_changed[0])
             {
@@ -593,7 +593,7 @@ int main(void)
                 grids.setRandomness(poti[3]);
             }
         }
-        else if (page == 2)
+        else if (page == 5)
         {
             if (poti_changed[0])
             {
@@ -628,15 +628,15 @@ int main(void)
             if (poti_changed[1])
                 fr_out.Write(poti[1]);
         }
-        else if (page - 3 <= kNumDrumInstruments)
+        else if (page - 1 <= kNumDrumInstruments)
         {
-            if (last_input != input)
+            if (input && last_input != input)
             {
-                midi_dispatcher.OnDrumNote(DrumMapping[page - 3], 127);
+                midi_dispatcher.OnDrumNote(DrumMapping[page - 1], 127);
             }
 
-            uint8_t synth = drum_synth.Patch(page - 3).synth;
-            DrumPatch &patch = drum_synth.Patch(page - 3);
+            uint8_t synth = drum_synth.Patch(page - 1).synth;
+            DrumPatch &patch = drum_synth.Patch(page - 1);
 
             if (button_pressed > 128) //Long Pressed
             {
@@ -660,6 +660,8 @@ int main(void)
                     patch.amp_decay = poti[3];
             }
         }
+
+        last_input = input;
     }
 }
 

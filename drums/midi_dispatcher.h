@@ -15,7 +15,7 @@ enum GM
 };
 
 const uint8_t DrumMapping[] = {
-	GM_BD1, GM_SD, GM_CH, GM_BD0, GM_CP, GM_OH};
+    GM_BD1, GM_SD, GM_CH, GM_BD0, GM_CP, GM_OH};
 
 struct LowPriorityBufferSpecs
 {
@@ -117,25 +117,13 @@ public:
         {
             grids.tick(ticks_granularity[2]);
 
-            uint8_t state = grids.getAllStates();
-
-            if (state & 0x1)
-                OnDrumNote(GM_BD1, 127);
-
-            if (state & 0x2)
-                OnDrumNote(GM_SD, 127);
-
-            if (state & 0x4)
-                OnDrumNote(GM_CH, 127);
-
-            if (state & 0x8)
-                OnDrumNote(GM_BD0, 127);
-
-            if (state & 0x16)
-                OnDrumNote(GM_CP, 127);
-
-            if (state & 0x32)
-                OnDrumNote(GM_OH, 127);
+            for (int i = 0; i < 6; ++i)
+            {
+                if (grids.getDrumState(i))
+                {
+                    OnDrumNote(DrumMapping[i], 127);
+                }
+            }
         }
     }
 
