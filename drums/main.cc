@@ -31,9 +31,11 @@
 #include "avrlib/devices/rotary_encoder.h"
 
 #include "drum_synth.h"
-#include "sequencer.h"
+#include "TopographPatternGenerator.h"
+
+PatternGenerator grids;
+
 #include "midi_dispatcher.h"
-#include "machinedrum.h"
 
 using namespace avrlib;
 using avrlib::BufferedDisplay;
@@ -60,146 +62,83 @@ Lcd lcd;
 BufferedDisplay<Lcd> display;
 
 const prog_uint8_t sequencer_characters[] PROGMEM =
-	{
-		0b00110,
-		0b00110,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
+    {
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00000,
 
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00110,
-		0b00110,
-		0b00000,
-		0b00000,
-		0b00000,
+        0b00110,
+        0b00110,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00000,
 
-		0b00110,
-		0b00110,
-		0b00000,
-		0b00110,
-		0b00110,
-		0b00000,
-		0b00000,
-		0b00000,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00110,
+        0b00110,
+        0b00000,
+        0b00000,
+        0b00000,
 
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00110,
-		0b00110,
+        0b00110,
+        0b00110,
+        0b00000,
+        0b00110,
+        0b00110,
+        0b00000,
+        0b00000,
+        0b00000,
 
-		0b00110,
-		0b00110,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00110,
-		0b00110,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00110,
+        0b00110,
 
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00110,
-		0b00110,
-		0b00000,
-		0b00110,
-		0b00110,
+        0b00110,
+        0b00110,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00110,
+        0b00110,
 
-		0b00110,
-		0b00110,
-		0b00000,
-		0b00110,
-		0b00110,
-		0b00000,
-		0b00110,
-		0b00110,
-};
+        0b00000,
+        0b00000,
+        0b00000,
+        0b00110,
+        0b00110,
+        0b00000,
+        0b00110,
+        0b00110,
 
-const prog_uint8_t intstrument_characters[] PROGMEM =
-	{
-		//1
-		0b00000,
-		0b00000,
-		0b00000,
-		0b11000,
-		0b10100,
-		0b11000,
-		0b10100,
-		0b11000,
-
-		//2
-		0b11000,
-		0b10100,
-		0b10100,
-		0b10100,
-		0b11000,
-		0b00000,
-		0b00000,
-		0b00000,
-
-		//3
-		0b00000,
-		0b00000,
-		0b00000,
-		0b01100,
-		0b10000,
-		0b01000,
-		0b00100,
-		0b11000,
-
-		//4
-		0b00000,
-		0b00000,
-		0b00000,
-		0b10100,
-		0b10100,
-		0b11100,
-		0b10100,
-		0b10100,
-
-		//5
-		0b10100,
-		0b10100,
-		0b11100,
-		0b10100,
-		0b10100,
-		0b00000,
-		0b00000,
-		0b00000,
-
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
-
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
-		0b00000,
+        0b00110,
+        0b00110,
+        0b00000,
+        0b00110,
+        0b00110,
+        0b00000,
+        0b00110,
+        0b00110,
 };
 
 const prog_uint8_t *const character_table[] =
-	{
-		sequencer_characters,
-		intstrument_characters,
+    {
+        sequencer_characters,
 };
 
 char *linebuffer = display.line_buffer(0);
@@ -233,158 +172,166 @@ uint8_t page = 0;
 
 typedef SerialPort0 MidiPort;
 typedef avrlib::Serial<
-	MidiPort,
-	31250,
-	avrlib::POLLED,
-	avrlib::POLLED>
-	MidiIO;
+    MidiPort,
+    31250,
+    avrlib::POLLED,
+    avrlib::POLLED>
+    MidiIO;
 
 MidiIO midi_io;
-RingBuffer<SerialInput<MidiPort> > midi_buffer;
+typedef SerialInput<MidiPort> Midi;
+RingBuffer<Midi> midi_buffer;
 MidiStreamParser<MidiDispatcher> midi_parser;
 
 inline void ProcessMidi()
 {
-	while (midi_buffer.readable())
-	{
-		midi_parser.PushByte(midi_buffer.ImmediateRead());
-	}
+    while (midi_buffer.readable())
+    {
+        midi_parser.PushByte(midi_buffer.ImmediateRead());
+    }
 }
 
 inline void PollMidiIn()
 {
-	static uint8_t clock_divider_midi = 0;
+    static uint8_t clock_divider_midi = 0;
 
-	--clock_divider_midi;
-	if (!clock_divider_midi)
-	{
-		if (midi_io.readable())
-		{
-			midi_buffer.NonBlockingWrite(midi_io.ImmediateRead());
-		}
+    --clock_divider_midi;
+    if (!clock_divider_midi)
+    {
+        if (midi_io.readable())
+        {
+            midi_buffer.NonBlockingWrite(midi_io.ImmediateRead());
+        }
 
-		clock_divider_midi = 4;
-	}
+        clock_divider_midi = 4;
+    }
 }
 
 inline void FlushMidiOut()
 {
-	// Try to flush the high priority buffer first.
-	if (midi_dispatcher.readable_high_priority())
-	{
-		if (midi_io.writable())
-		{
-			midi_io.Overwrite(midi_dispatcher.ImmediateReadHighPriority());
-		}
-	}
-	else
-	{
-		if (midi_dispatcher.readable_low_priority())
-		{
-			if (midi_io.writable())
-			{
-				midi_io.Overwrite(midi_dispatcher.ImmediateReadLowPriority());
-			}
-		}
-	}
+    // Try to flush the high priority buffer first.
+    if (midi_dispatcher.readable_high_priority())
+    {
+        if (midi_io.writable())
+        {
+            midi_io.Overwrite(midi_dispatcher.ImmediateReadHighPriority());
+        }
+    }
+    else
+    {
+        if (midi_dispatcher.readable_low_priority())
+        {
+            if (midi_io.writable())
+            {
+                midi_io.Overwrite(midi_dispatcher.ImmediateReadLowPriority());
+            }
+        }
+    }
 }
+
+static bool playing = false;
+static bool internalClock = true;
 
 inline void TickInternalClock()
 {
-	static uint8_t cycle = 0;
-	if (Sequencer::InternalClock())
-	{
-		if (cycle == 0)
-			Sequencer::Clock();
+    static uint8_t cycle = 0;
+    if (playing && internalClock)
+    {
+        if (cycle == 0)
+            MidiDispatcher::Clock(true);
 
-		if (++cycle >= 32)
-			cycle = 0;
-	}
+        if (++cycle >= 32)
+            cycle = 0;
+    }
+    else
+    {
+        cycle = 0;
+    }
 }
 
 inline void FillAudioBuffer()
 {
-	if (drum_synth.AudioBuffer.readable())
-		audio_out.Write(drum_synth.AudioBuffer.ImmediateRead());
-	else
-		audio_out.Write(0);
+    if (drum_synth.AudioBuffer.readable())
+        audio_out.Write(drum_synth.AudioBuffer.ImmediateRead());
+    else
+        audio_out.Write(0);
 
-	fc_out.Write(drum_synth.CFBuffer.ImmediateRead());
+    fc_out.Write(drum_synth.CFBuffer.ImmediateRead());
 }
 
 // 39kHz clock used for the tempo counter.
 ISR(TIMER2_OVF_vect, ISR_NOBLOCK)
 {
-	FillAudioBuffer();
+    FillAudioBuffer();
 
-	PollMidiIn();
-	FlushMidiOut();
+    PollMidiIn();
+    FlushMidiOut();
 
-	static uint8_t cycle = 0;
-	if (++cycle % 32 == 0)
-	{
-		Timer<1>::Start();
+    static uint8_t cycle = 0;
+    if (++cycle % 32 == 0)
+    {
+        Timer<1>::Start();
 
-		lcd.Tick();
+        lcd.Tick();
 
-		TickInternalClock();
-	}
+        TickInternalClock();
+    }
 }
 
 ISR(TIMER1_OVF_vect, ISR_NOBLOCK)
 {
-	Timer<1>::Stop();
+    Timer<1>::Stop();
 
-	//TickInternalClock();
-	TickSystemClock();
+    //TickInternalClock();
+    TickSystemClock();
 
-	static uint8_t pots_multiplexer_address_ = 0;
-	last_poti[pots_multiplexer_address_] = poti[pots_multiplexer_address_];
-	poti[pots_multiplexer_address_] = adc_.ReadOut() >> 2;
-	pots_multiplexer_address_ = (pots_multiplexer_address_ + 1) & 7;
-	adc_.StartConversion(pots_multiplexer_address_);
+    static uint8_t pots_multiplexer_address_ = 0;
+    last_poti[pots_multiplexer_address_] = poti[pots_multiplexer_address_];
+    poti[pots_multiplexer_address_] = adc_.ReadOut() >> 2;
+    pots_multiplexer_address_ = (pots_multiplexer_address_ + 1) & 7;
+    adc_.StartConversion(pots_multiplexer_address_);
 
-	enc_inc += encoder.ReadEncoder();
+    enc_inc += encoder.ReadEncoder();
 
-	static uint8_t last_v = 1;
-	uint8_t v = encoder.immediate_value();
-	if (v == 0 && last_v != v)
-		enc_click++;
+    static uint8_t last_v = 1;
+    uint8_t v = encoder.immediate_value();
+    if (v == 0 && last_v != v)
+        enc_click++;
 
-	last_v = v;
+    last_v = v;
 }
 
 inline void potiChanged(bool *poti_changed)
 {
-	poti_changed[0] = (poti[0] >> 2) != (last_poti[0] >> 2);
-	poti_changed[1] = (poti[1] >> 2) != (last_poti[1] >> 2);
-	poti_changed[2] = (poti[2] >> 2) != (last_poti[2] >> 2);
-	poti_changed[3] = (poti[3] >> 2) != (last_poti[3] >> 2);
+    poti_changed[0] = (poti[0] >> 2) != (last_poti[0] >> 2);
+    poti_changed[1] = (poti[1] >> 2) != (last_poti[1] >> 2);
+    poti_changed[2] = (poti[2] >> 2) != (last_poti[2] >> 2);
+    poti_changed[3] = (poti[3] >> 2) != (last_poti[3] >> 2);
 }
 
 inline void itoa(uint8_t i, char *destination)
 {
-	if (i == 0)
-	{
-		*destination++ = ' ';
-		*destination++ = ' ';
-		*destination++ = '0';
-	}
+    if (i == 0)
+    {
+        *destination++ = ' ';
+        *destination++ = ' ';
+        *destination++ = '0';
+    }
 
-	static unsigned char digits[3];
+    static unsigned char digits[3];
 
-	uint8_t digit = 0;
-	while (i > 0)
-	{
-		digits[digit++] = i % 10;
-		i /= 10;
-	}
+    uint8_t digit = 0;
+    while (i > 0)
+    {
+        digits[digit++] = i % 10;
+        i /= 10;
+    }
 
-	for (int i = 3; i > digit; --i)
-		*destination++ = ' ';
+    for (int i = 3; i > digit; --i)
+        *destination++ = ' ';
 
-	while (digit)
-		*destination++ = 48 + digits[--digit];
+    while (digit)
+        *destination++ = 48 + digits[--digit];
 }
 
 uint8_t cutoff = 255;
@@ -395,261 +342,325 @@ uint8_t patches[kNumDrumInstruments] = {0, 8, 14};
 static uint8_t currentCharMap = -1;
 inline void setCharacters(uint8_t index)
 {
-	static uint8_t c = 0;
-	if (currentCharMap != index)
-	{
-		currentCharMap = index;
-		lcd.SetCustomCharMapRes(character_table[currentCharMap], 7, 1);
-	}
+    static uint8_t c = 0;
+    if (currentCharMap != index)
+    {
+        currentCharMap = index;
+        lcd.SetCustomCharMapRes(character_table[currentCharMap], 8, 0);
+    }
 }
 
 ISR(TIMER0_OVF_vect, ISR_BLOCK)
 {
 }
 
+static void ReadSequence(char *sequenceString)
+{
+    for (int i = 0; i < 32; ++i)
+    {
+        sequenceString[i] = 0; //grids.getPattern()[i] & 0x7;
+
+        uint8_t X = grids.getX();
+        uint8_t Y = grids.getY();
+
+        if (grids.readDrumMatrix(i, 0, X, Y))
+            sequenceString[i] |= 1;
+
+        if (grids.readDrumMatrix(i, 1, X, Y))
+            sequenceString[i] |= 2;
+
+        if (grids.readDrumMatrix(i, 2, X, Y))
+            sequenceString[i] |= 4;
+
+        // if (sequenceString[i] == 0)
+        //     sequenceString[i] = ' ';
+    }
+}
+
 int main(void)
 {
-	sei();
+    sei();
 
-	//dbg.Init();
-	status_leds.Init();
-	switches.Init();
-	midi_io.Init();
-	drum_synth.Init();
-	audio_out.Init();
+    //dbg.Init();
+    status_leds.Init();
+    switches.Init();
+    midi_io.Init();
+    drum_synth.Init();
+    audio_out.Init();
 
-	adc_.Init();
-	adc_.set_reference(ADC_DEFAULT);
-	adc_.set_alignment(ADC_RIGHT_ALIGNED);
+    adc_.Init();
+    adc_.set_reference(ADC_DEFAULT);
+    adc_.set_alignment(ADC_RIGHT_ALIGNED);
 
-	fr_out.Init();
-	fc_out.Init();
-	vca_out.Init();
+    fr_out.Init();
+    fc_out.Init();
+    vca_out.Init();
 
-	fr_out.Write(0);
-	fc_out.Write(255);
-	vca_out.Write(255);
+    fr_out.Write(0);
+    fc_out.Write(255);
+    vca_out.Write(255);
 
-	lcd.Init();
-	setCharacters(0);
-	display.Init();
-	encoder.Init();
+    lcd.Init();
+    setCharacters(0);
+    display.Init();
+    encoder.Init();
+    page = 1;
 
-	for (int i = 0; i < kNumDrumInstruments; ++i)
-		drum_synth.LoadPatch(i, patches[i]);
+    for (int i = 0; i < kNumDrumInstruments; ++i)
+        drum_synth.LoadPatch(i, patches[i]);
 
-	Timer<0>::set_prescaler(1);
-	Timer<0>::set_mode(TIMER_PWM_PHASE_CORRECT);
-	//Timer<0>::Start();
+    Timer<0>::set_prescaler(1);
+    Timer<0>::set_mode(TIMER_PWM_PHASE_CORRECT);
+    //Timer<0>::Start();
 
-	Timer<1>::set_prescaler(1);
-	Timer<1>::set_mode(TIMER_PWM_PHASE_CORRECT);
+    Timer<1>::set_prescaler(1);
+    Timer<1>::set_mode(TIMER_PWM_PHASE_CORRECT);
 
-	Timer<2>::set_prescaler(1);
-	Timer<2>::set_mode(TIMER_PWM_PHASE_CORRECT);
-	Timer<2>::Start();
+    Timer<2>::set_prescaler(1);
+    Timer<2>::set_mode(TIMER_PWM_PHASE_CORRECT);
+    Timer<2>::Start();
 
-	static uint8_t last_step = -1;
+    sprintf(linebuffer, "Shruthi-DRUM 0.1________________");
+    for (int i = 0; i < 32; i++)
+    {
+        display.Tick();
+        Delay(42);
+    }
 
-	sprintf(linebuffer, "Shruthi-DRUM 0.1________________");
-	for (int i = 0; i < 32; i++)
-	{
-		display.Tick();
-		Delay(42);
-	}
+    grids.setPatternMode(PATTERN_ORIGINAL);
+    grids.setAccentAltMode(false);
 
-	while (1)
-	{
-		ProcessMidi();
-		drum_synth.Render(cutoff);
-		display.Tick();
+    grids.setBDDensity(127);
+    grids.setSDDensity(127);
+    grids.setHHDensity(127);
 
-		potiChanged(poti_changed);
+    uint32_t ticks = 0;
+    const int n = 1000;
+    int8_t last_page = -1;
+    int8_t last_step = -1;
+    char last_char = 0;
 
-		if (enc_click)
-		{
-			if (!Sequencer::IsPaying())
-			{
-				Sequencer::Start();
-				Sequencer::InternalClock() = true;
-			}
-			else
-				Sequencer::Stop();
+    //AA__BB__CC__DD__
+    //  2   6   A   E
+    while (1)
+    {
+        ProcessMidi();
+        drum_synth.Render(cutoff);
+        display.Tick();
+        potiChanged(poti_changed);
 
-			--enc_click;
+        if (poti_changed[0] || poti_changed[1] || poti_changed[2] || poti_changed[3])
+        {
+            ticks = 0;
+            last_step = -1;
+        }
+        else if (++ticks > n)
+            ticks = n + 1;
 
-			display.Clear();
-		}
+        if (ticks > n)
+        {
+            last_page = -1;
 
-		static uint8_t last_input = 0;
-		uint8_t input = ~switches.Read();
+            if (last_step == -1)
+            {
+                ReadSequence(linebuffer);
+                //sprintf(&linebuffer[16], "                ");
+            }
+            else
+            {
+                linebuffer[last_step] = (grids.getPattern()[last_step] & 0x7);
+            }
 
-		if ((input & (32 | 16 | 8 | 4))) //Button Pressed
-		{
-			if (button_pressed < 255)
-				button_pressed++;
-		}
-		else
-			button_pressed = 0;
+            last_step = grids.getStep();
+            last_char = linebuffer[last_step];
+            linebuffer[last_step] = 0xff;  
+        }
+        else
+        {
+            if (last_page != page)
+            {
+                last_page = page;
+                display.Clear();
 
-		if (input & 1 || page == 0)
-		{
-			page = 6;
-			last_step = sequencer.Step - 1;
-		}
+                if (page == 1)
+                {
+                    sprintf(&linebuffer[00], "DB  SD  HH  RND ");
+                    sprintf(&linebuffer[16], "                ");
+                }
+                else if (page == 2)
+                {
+                    sprintf(&linebuffer[00], "X   Y   LEN RND ");
+                    sprintf(&linebuffer[16], "                ");
+                }
+                else if (page == 3)
+                {
+                    sprintf(&linebuffer[00], "BaseDrum        ");
+                    sprintf(&linebuffer[16], "                ");
+                }
+                else if (page == 4)
+                {
+                    sprintf(&linebuffer[00], "SnareDrum        ");
+                    sprintf(&linebuffer[16], "                ");
+                }
+                else if (page == 5)
+                {
+                    sprintf(&linebuffer[00], "HiHat          ");
+                    sprintf(&linebuffer[16], "                ");
+                }
+                else if (page == 6)
+                {
+                    sprintf(&linebuffer[00], "FILTER          ");
+                    sprintf(&linebuffer[16], "                ");
+                }
+            }
 
-		if (input & 2)
-			page = 5;
+            itoa(poti[0], linebuffer + 16);
+            itoa(poti[1], linebuffer + 20);
+            itoa(poti[2], linebuffer + 24);
+            itoa(poti[3], linebuffer + 28);
+        }
 
-		if (input & 4)
-			page = 4;
+        if (enc_click)
+        {
+            if (!playing)
+            {
+                playing = true;
+                internalClock = true;
+            }
+            else
+                playing = false;
 
-		if (input & 8)
-			page = 3;
+            --enc_click;
 
-		if (input & 16)
-			page = 2;
+            //display.Clear();
+            grids.reset();
+            ticks = n + 1;
+        }
 
-		if (input & 32)
-			page = 1;
+        static uint8_t last_input = 0;
+        uint8_t input = ~switches.Read();
 
-		static uint8_t last_page = 0;
-		if (last_page != page)
-		{
-			last_page = page;
-			display.Clear();
-		}
+        if ((input & (32 | 16 | 8 | 4))) //Button Pressed
+        {
+            if (button_pressed < 255)
+                button_pressed++;
 
-		if ((input & (32 | 16 | 8 | 4)) && last_input != input)
-		{
-			drum_synth.Trigger(page - 1, 255);
-			midi_dispatcher.OnDrumNote(machinedrumMapping[12+page - 1], 127);
-		}
+            ticks = 0;
+        }
+        else
+            button_pressed = 0;
 
-		last_input = input;
+        if (input & 1)
+            page = 6;
 
-		if (page == 6)
-		{
-			itoa(page, linebuffer + 16);
+        if (input & 2)
+            page = 5;
 
-			itoa(sequencer.X, linebuffer + 16);
-			itoa(sequencer.Y, linebuffer + 20);
+        if (input & 4)
+            page = 4;
 
-			if (poti_changed[0])
-				sequencer.X = poti[0];
+        if (input & 8)
+            page = 3;
 
-			if (poti_changed[1])
-				sequencer.Y = poti[1];
+        if (input & 16)
+            page = 2;
 
-			if (poti_changed[2])
-			{
-				sequencer.Threshold = 255 - poti[2];
-			}
+        if (input & 32)
+            page = 1;
 
-			if (poti_changed[3])
-			{
-				drum_synth.MorphPatch(0, poti[3]);
-				drum_synth.MorphPatch(1, poti[3]);
-				drum_synth.MorphPatch(2, poti[3]);
-				drum_synth.MorphPatch(3, poti[3]);
-			}
+        last_input = input;
+        status_leds.Write(1 << (page - 1));
 
-			if (last_step != sequencer.Step)
-			{
-				last_step = sequencer.Step;
+        if (page == 1)
+        {
+            if (poti_changed[0])
+            {
+                grids.setBDDensity(poti[0]);
+            }
 
-				sequencer.ReadSequence(linebuffer);
+            if (poti_changed[1])
+            {
+                grids.setSDDensity(poti[1]);
+            }
 
-				uint8_t t = sequencer.Step;
-				linebuffer[t] = 0xff;
-			}
-		}
-		else if (page == 5)
-		{
-			linebuffer[0] = 'F';
-			linebuffer[1] = 'I';
-			linebuffer[2] = 'L';
-			linebuffer[3] = 'T';
-			linebuffer[4] = 'E';
-			linebuffer[5] = 'R';
+            if (poti_changed[2])
+            {
+                grids.setHHDensity(poti[2]);
+            }
 
-			if (poti_changed[0])
-				cutoff = poti[0];
+            if (poti_changed[3])
+            {
+                grids.setRandomness(poti[3]);
+            }
+        }
+        else if (page == 2)
+        {
+            if (poti_changed[0])
+            {
+                grids.setMapX(poti[0]);
+                grids.setEuclideanLength(0, poti[0]);
+            }
 
-			if (poti_changed[1])
-				fr_out.Write(poti[1]);
-		}
-		else
-		{
-			status_leds.Write(1 << (page - 1));
+            if (poti_changed[1])
+            {
+                grids.setMapY(poti[1]);
+                grids.setEuclideanLength(1, poti[1]);
+            }
 
-			if (page <= kNumDrumInstruments)
-			{
-				uint8_t synth = drum_synth.Patch(page - 1).synth;
+            //if (poti_changed[2])
+            {
+                if (grids.getStep() * 4 > poti[2])
+                    grids.reset();
+            }
 
-				linebuffer[0] = '0' + page;
-				linebuffer[1] = ':';
+            if (poti_changed[3])
+            {
+                grids.setRandomness(poti[3]);
+                grids.setEuclideanLength(2, poti[3]);
+            }
+        }
+        else if (page == 6)
+        {
 
-				if (synth == SYNTH_BD)
-				{
-					linebuffer[2] = 'B';
-					linebuffer[3] = 'D';
-				}
-				else if (synth == SYNTH_SD)
-				{
-					linebuffer[2] = 'S';
-					linebuffer[3] = 'D';
-				}
-				else if (synth == SYNTH_HH)
-				{
-					linebuffer[2] = 'H';
-					linebuffer[3] = 'H';
-				}
+            if (poti_changed[0])
+                cutoff = poti[0];
 
-				DrumPatch &patch = drum_synth.Patch(page - 1);
+            if (poti_changed[1])
+                fr_out.Write(poti[1]);
+        }
+        else if (page - 3 <= kNumDrumInstruments)
+        {
+            if (last_input != input)
+            {
+                midi_dispatcher.OnDrumNote(DrumMapping[page - 3], 127);
+            }
 
-				if (button_pressed > 128) //Long Pressed
-				{
-					linebuffer[4] = ' ';
-					linebuffer[5] = 'R';
-					linebuffer[6] = 'S';
-					linebuffer[7] = 'T';
+            uint8_t synth = drum_synth.Patch(page - 3).synth;
+            DrumPatch &patch = drum_synth.Patch(page - 3);
 
-					for (int i = 17; i < 32; i++)
-						linebuffer[i] = ' ';
+            if (button_pressed > 128) //Long Pressed
+            {
+                drum_synth.LoadPatch(page - 1, patches[page - 1]);
+            }
+            else
+            {
+                if (poti_changed[0])
+                    patch.pitch = poti[0];
 
-					drum_synth.LoadPatch(page - 1, patches[page - 1]);
-				}
-				else
-				{
-					linebuffer[4] = ' ';
-					linebuffer[5] = ' ';
-					linebuffer[6] = ' ';
-					linebuffer[7] = ' ';
+                if (poti_changed[1])
+                {
+                    patch.pitch_decay = poti[1];
+                    patch.pitch_mod = 255 - poti[1];
+                }
 
-					itoa(patch.pitch, linebuffer + 17);
-					itoa(patch.pitch_decay, linebuffer + 21);
-					itoa(patch.crunchiness, linebuffer + 25);
-					itoa(patch.amp_decay, linebuffer + 29);
+                if (poti_changed[2])
+                    patch.crunchiness = poti[2];
 
-					if (poti_changed[0])
-						patch.pitch = poti[0];
-
-					if (poti_changed[1])
-					{
-						patch.pitch_decay = poti[1];
-						patch.pitch_mod = 255 - poti[1];
-					}
-
-					if (poti_changed[2])
-						patch.crunchiness = poti[2];
-
-					if (poti_changed[3])
-						patch.amp_decay = poti[3];
-				}
-			}
-		}
-	}
+                if (poti_changed[3])
+                    patch.amp_decay = poti[3];
+            }
+        }
+    }
 }
 
 #if 0

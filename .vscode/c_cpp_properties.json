@@ -4,7 +4,7 @@
             "name": "avr",
             "includePath": [
                 "${workspaceFolder}/",
-                "/usr/lib/avr/include/"
+                "../WinAVR/avr/include/"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang",
